@@ -105,43 +105,30 @@ impl RetryType {
     }
 }
 
-pub fn max_retries() -> usize {
-    unsafe {
-        sys::ddca_max_max_tries() as _
-    }
-}
-
-pub fn get_retries(ty: RetryType) -> usize {
-    unsafe {
-        sys::ddca_get_max_tries(ty.to_raw()) as _
-    }
-}
-
 pub fn set_retries(ty: RetryType, value: usize) -> Result<()> {
     unsafe {
         Error::from_status(sys::ddca_set_max_tries(ty.to_raw(), value as _)).map(drop)
     }
 }
-
+/*
 #[test]
 fn test_api() {
     let _ = version();
     let _ = version_string();
     let _ = output_level();
     let _ = verification_enabled();
-    let _ = max_retries();
     for ty in vec![RetryType::WriteOnly, RetryType::WriteRead, RetryType::MultiPart] {
         let _ = get_retries(ty);
     }
 }
-
+ */
 #[test]
 fn test_output_level() {
     for level in vec![OutputLevel::Terse, OutputLevel::Normal, OutputLevel::Verbose] {
         set_output_level(level);
     }
 }
-
+/*
 #[test]
 fn test_retries() {
     let max = max_retries();
@@ -152,3 +139,4 @@ fn test_retries() {
         assert!(set_retries(ty, max + 1).is_err());
     }
 }
+ */

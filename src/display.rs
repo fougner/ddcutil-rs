@@ -22,7 +22,7 @@ impl DisplayInfo {
     pub fn open(&self) -> ::Result<Display> {
         unsafe {
             let mut handle = mem::uninitialized();
-            let status = sys::ddca_open_display(self.handle, &mut handle as *mut _);
+            let status = sys::ddca_open_display2(self.handle, &mut handle as *mut _);
             Error::from_status(status).map(|_| Display::from_raw(handle))
         }
     }
@@ -57,11 +57,14 @@ impl DisplayInfo {
 
     pub fn enumerate() -> ::Result<DisplayInfoList> {
         unsafe {
-            let res = sys::ddca_get_display_info_list();
-            if res.is_null() {
-                Err(Error::new(Status::new(libc::EINVAL)))
+
+            let mut handle: *mut sys::DDCA_Display_Info_List = std::ptr::null_mut();
+            let status = sys::ddca_get_display_info_list2(false, &mut handle);
+
+            if Error::from_status(status).is_ok() {
+                Ok(DisplayInfoList::from_raw(handle))
             } else {
-                Ok(DisplayInfoList::from_raw(res))
+                Err(Error::new(Status::new(libc::EINVAL)))
             }
         }
     }
@@ -258,7 +261,7 @@ impl Display {
     pub fn capabilities(&self) -> ::Result<Capabilities> {
         self.capabilities_string().and_then(|c| Capabilities::from_cstr(&c))
     }
-
+/*
     pub fn vcp_set_simple(&self, code: FeatureCode, value: u8) -> ::Result<()> {
         unsafe {
             Error::from_status(sys::ddca_set_simple_nc_vcp_value(
@@ -266,7 +269,7 @@ impl Display {
             )).map(drop)
         }
     }
-
+ */
     pub fn vcp_set_raw(&self, code: FeatureCode, value: u16) -> ::Result<()> {
         unsafe {
             Error::from_status(sys::ddca_set_raw_vcp_value(
@@ -274,7 +277,7 @@ impl Display {
             )).map(drop)
         }
     }
-
+/*
     pub fn vcp_set_continuous(&self, code: FeatureCode, value: i32) -> ::Result<()> {
         unsafe {
             Error::from_status(sys::ddca_set_continuous_vcp_value(
@@ -282,11 +285,11 @@ impl Display {
             )).map(drop)
         }
     }
-
+*/
     pub fn vcp_get_value(&self, code: FeatureCode) -> ::Result<Value> {
         unsafe {
             let mut raw = mem::uninitialized();
-            Error::from_status(sys::ddca_get_any_vcp_value(
+            Error::from_status(sys::ddca_get_any_vcp_value_using_explicit_type(
                 self.handle, code as _, sys::DDCA_NON_TABLE_VCP_VALUE_PARM, &mut raw
             ))?;
             let raw = &mut *raw;
@@ -303,7 +306,7 @@ impl Display {
     pub fn vcp_get_table(&self, code: FeatureCode) -> ::Result<Vec<u8>> {
         unsafe {
             let mut raw = mem::uninitialized();
-            Error::from_status(sys::ddca_get_any_vcp_value(
+            Error::from_status(sys::ddca_get_any_vcp_value_using_explicit_type(
                 self.handle, code as _, sys::DDCA_TABLE_VCP_VALUE_PARM, &mut raw
             ))?;
             let raw = &mut *raw;

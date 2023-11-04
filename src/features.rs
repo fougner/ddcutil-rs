@@ -68,6 +68,17 @@ impl MccsVersion {
             _ => Err(()),
         }
     }
+
+    pub fn vspec(&self) -> Result<sys::DDCA_MCCS_Version_Spec, ()> {
+        match *self {
+            MccsVersion { major: 1, minor: 0 } => Ok(sys::DDCA_VSPEC_V10),
+            MccsVersion { major: 2, minor: 0 } => Ok(sys::DDCA_VSPEC_V20),
+            MccsVersion { major: 2, minor: 1 } => Ok(sys::DDCA_VSPEC_V21),
+            MccsVersion { major: 3, minor: 0 } => Ok(sys::DDCA_VSPEC_V30),
+            MccsVersion { major: 2, minor: 2 } => Ok(sys::DDCA_VSPEC_V22),
+            _ => Err(()),
+        }
+    }
 }
 
 impl fmt::Display for MccsVersion {
@@ -110,27 +121,29 @@ impl Capabilities {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FeatureInfo {
+pub struct FeatureMetadata {
     pub name: String,
     pub description: String,
     pub value_names: HashMap<u8, String>,
     pub flags: FeatureFlags,
 }
 
-impl FeatureInfo {
+impl FeatureMetadata {
     pub fn from_code(code: FeatureCode, version: MccsVersion) -> ::Result<Self> {
         unsafe {
+
             let mut res = mem::uninitialized();
-            Error::from_status(sys::ddca_get_feature_info_by_vcp_version(
-                code, version.id().unwrap_or(sys::DDCA_VANY), &mut res
+            Error::from_status(sys::ddca_get_feature_metadata_by_vspec(
+                code, version.vspec().unwrap_or(sys::DDCA_VSPEC_ANY), true, &mut res
             ))?;
+
             let features = Self::from_raw(&*res);
-            Error::from_status(sys::ddca_free_feature_info(res))?;
+            sys::ddca_free_feature_metadata(res);
             Ok(features)
         }
     }
 
-    pub unsafe fn from_raw(raw: &sys::DDCA_Version_Feature_Info) -> Self {
+    pub unsafe fn from_raw(raw: &sys::DDCA_Feature_Metadata) -> Self {
         unsafe fn from_ptr(ptr: *const c_char) -> String {
             if ptr.is_null() {
                 Default::default()
@@ -139,9 +152,9 @@ impl FeatureInfo {
             }
         }
 
-        FeatureInfo {
+        FeatureMetadata {
             name: from_ptr(raw.feature_name),
-            description: from_ptr(raw.desc),
+            description: from_ptr(raw.feature_desc),
             value_names: raw.sl_values().iter().map(|v| (
                 v.value_code,
                 from_ptr(v.value_name),
